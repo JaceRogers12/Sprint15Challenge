@@ -1,7 +1,30 @@
 const router = require('express').Router();
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("./auth-model.js");
+const secret = require("./secret.js");
 
-router.post('/register', (req, res) => {
-  res.end('implement register, please!');
+router.post('/register', async (req, res, next) => {
+  let {username, password} = req.body;
+  if (!username || !password) {
+    next({status: 400, message: "username and password are required"})
+  } else {
+    const [taken] = await User.findBy({username})
+    if (taken) {
+      next({status: 400, message: "username taken"})
+    } else {
+      const hash = bcrypt.hashSync(password, 7);
+      password = hash;
+      User.add({username, password})
+        .then(newUser => {
+          res.status(201).json(newUser)
+        }) .catch(err => {
+          next(err)
+        })
+    }
+  }
+  
+  //res.end('implement register, please!');
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -29,8 +52,20 @@ router.post('/register', (req, res) => {
   */
 });
 
-router.post('/login', (req, res) => {
-  res.end('implement login, please!');
+router.post('/login', async (req, res, next) => {
+  let {username, password} = req.body;
+  if (!username || !password) {
+    next({status: 400, message: "username and password are required"})
+  } else {
+    const [user] = await User.findBy({username});
+    if (!user || !bcrypt.compareSync(password, user.password)) {
+      next({status: 401, message: "invalid credentials"})
+    } else {
+      const token = tokenMaker(user)
+      res.status(200).json({message: `welcome, ${user.username}`, token: token})
+    }
+  }
+  //res.end('implement login, please!');
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -55,5 +90,15 @@ router.post('/login', (req, res) => {
       the response body should include a string exactly as follows: "invalid credentials".
   */
 });
+
+function tokenMaker(user) {
+  let payload = {
+    subject: user.id,
+  }
+  let options = {
+    expiresIn: "1d"
+  }
+  return jwt.sign(payload, secret, options)
+}
 
 module.exports = router;
