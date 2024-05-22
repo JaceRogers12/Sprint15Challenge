@@ -62,7 +62,7 @@ router.post('/login', async (req, res, next) => {
       next({status: 401, message: "invalid credentials"})
     } else {
       const token = tokenMaker(user)
-      res.status(200).json({message: `welcome, ${user.username}`, token: token})
+      res.status(200).json({message: `welcome, ${user.username}`, token})
     }
   }
   //res.end('implement login, please!');
